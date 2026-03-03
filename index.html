@@ -7,47 +7,60 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Momente" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
   <title>Unsere Momente</title>
 
   <link rel="manifest" href="manifest.webmanifest" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "44a121f4-9431-40cd-acf3-30702c3ece16",
-      serviceWorkerPath: "/unsere-momente/push/OneSignalSDKWorker.js",
-      serviceWorkerUpdaterPath: "/unsere-momente/push/OneSignalSDKUpdaterWorker.js",
-      serviceWorkerParam: { scope: "/unsere-momente/push/" }
-    });
-  });
-</script>
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- OneSignal (Web SDK v16) -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "44a121f4-9431-40cd-acf3-30702c3ece16",
+
+        // WICHTIG für GitHub Pages Unterordner + eigener PWA Service Worker:
+        serviceWorkerPath: "/unsere-momente/push/OneSignalSDKWorker.js",
+        serviceWorkerUpdaterPath: "/unsere-momente/push/OneSignalSDKUpdaterWorker.js",
+        serviceWorkerParam: { scope: "/unsere-momente/push/" }
+      });
+    });
+  </script>
 </head>
+
 <body>
-    <div id="splash" class="splash">
-        <div class="splashInner">
-            <div class="splashLogo">❤️</div>
-            <div class="splashTitle">Unsere Momente</div>
-            <div class="splashSub">Für dich.</div>
-        </div>
+  <div id="splash" class="splash">
+    <div class="splashInner">
+      <div class="splashLogo">❤️</div>
+      <div class="splashTitle">Unsere Momente</div>
+      <div class="splashSub">Für dich.</div>
     </div>
-    <section id="pairPanel" class="card pair" hidden>
-        <h2>Paar-Code</h2>
-        <p class="sub">Damit ihr beide die selben Erinnerungen seht.</p>
-        <label>
-            Code
-            <input id="inpPair" placeholder="Denk an uns 😊" />
-        </label>
-        <div class="row">
-            <button id="btnPairSave">Verbinden</button>
-            <button id="btnPairClear" class="secondary">Trennen</button>
-            <button id="btnPush" class="secondary">Push aktivieren</button>
-        </div>
-        <p class="hint">Tipp: Code geheim halten.</p>
-    </section>
+  </div>
+
+  <section id="pairPanel" class="card pair" hidden>
+    <h2>Paar-Code</h2>
+    <p class="sub">Damit ihr beide die selben Erinnerungen seht.</p>
+
+    <label>
+      Code
+      <input id="inpPair" placeholder="Denk an uns 😊" />
+    </label>
+
+    <div class="row">
+      <button id="btnPairSave">Verbinden</button>
+      <button id="btnPairClear" class="secondary">Trennen</button>
+      <button id="btnPush" class="secondary">Push aktivieren</button>
+    </div>
+
+    <p class="hint">Tipp: Code geheim halten.</p>
+  </section>
+
   <main class="wrap">
     <header class="card">
       <h1>Unsere Momente</h1>
@@ -89,7 +102,8 @@
         <button id="btnCancel" class="secondary">Abbrechen</button>
       </div>
 
-      <p class="hint">Wird nur auf diesem Gerät gespeichert (lokal).</p>
+      <!-- Optional: Text anpassen, weil ihr jetzt Cloud nutzt -->
+      <p class="hint">Wird mit eurem Paar-Code synchronisiert.</p>
     </section>
 
     <footer class="footer">
@@ -97,9 +111,12 @@
     </footer>
   </main>
 
+  <!-- App Scripts: cloud.js MUSS vor app.js -->
   <script src="cloud.js"></script>
   <script src="app.js"></script>
-    <script>
+
+  <!-- Dein PWA Service Worker (Caching/Offline) -->
+  <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./sw.js");
     }
