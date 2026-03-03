@@ -80,8 +80,6 @@ async function enablePush() {
       await OneSignal.Notifications.setOptIn(true);
     }
 
-    const id = OneSignal.User?.PushSubscription?.id;
-    alert("Subscription ID: " + (id || "KEINE"));
     // Tag setzen -> damit Edge Function nach pair_code targeten kann
     await OneSignal.User.addTags({ pair_code: pairCode });
 
