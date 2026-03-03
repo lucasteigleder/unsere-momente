@@ -1,83 +1,11 @@
-// Splash nach kurzem Moment entfernen
 window.addEventListener("load", () => {
   const s = document.getElementById("splash");
   if (!s) return;
   setTimeout(() => s.remove(), 600);
 });
 
-const STORAGE_KEY = "unsere_momente_v2";
-const DB_NAME = "unsere_momente_db";
-const DB_STORE = "photos";
+const PAIR_KEY = "unsere_momente_pair_v1";
 
-// ---------- IndexedDB helpers ----------
-function openDb() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function putPhoto(id, blob) {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DB_STORE, "readwrite");
-    tx.objectStore(DB_STORE).put(blob, id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function deletePhoto(id) {
-  if (!id) return;
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DB_STORE, "readwrite");
-    tx.objectStore(DB_STORE).delete(id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function getPhotoUrl(id) {
-  if (!id) return null;
-  const db = await openDb();
-  const blob = await new Promise((resolve, reject) => {
-    const tx = db.transaction(DB_STORE, "readonly");
-    const req = tx.objectStore(DB_STORE).get(id);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
-  });
-  if (!blob) return null;
-  return URL.createObjectURL(blob);
-}
-
-// ---------- Default Inhalte ----------
-const defaults = [
-  { id: "d1", title: "Du fehlst mir", text: "Wenn du das liest: Ich denk an dich. ❤️", photoId: null },
-  { id: "d2", title: "Unser Lieblingsding", text: "Wie wir immer über denselben Quatsch lachen.", photoId: null },
-  { id: "d3", title: "Nächstes Wiedersehen", text: "Wir schaffen das. Bald sehen wir uns.", photoId: null }
-];
-
-function loadMemories() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return defaults.slice();
-  try {
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : defaults.slice();
-  } catch {
-    return defaults.slice();
-  }
-}
-
-function saveMemories(memories) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(memories));
-}
-
-let memories = loadMemories();
-
-// ---------- DOM ----------
 const list = document.getElementById("list");
 const randomBox = document.getElementById("randomBox");
 
@@ -91,21 +19,46 @@ const inpPhoto = document.getElementById("inpPhoto");
 const btnSave = document.getElementById("btnSave");
 const btnCancel = document.getElementById("btnCancel");
 
-// Damit wir ObjectURLs wieder freigeben können:
-const objectUrls = new Set();
+// Pair UI
+const pairPanel = document.getElementById("pairPanel");
+const inpPair = document.getElementById("inpPair");
+const btnPairSave = document.getElementById("btnPairSave");
+const btnPairClear = document.getElementById("btnPairClear");
 
-function clearObjectUrls() {
-  for (const url of objectUrls) URL.revokeObjectURL(url);
-  objectUrls.clear();
+let pairCode = (localStorage.getItem(PAIR_KEY) || "").trim();
+let memories = [];
+let channel = null;
+
+function normalizePair(s) {
+  return (s || "").trim().toUpperCase();
 }
 
-async function render() {
-  clearObjectUrls();
+function showPairPanel(force = false) {
+  pairPanel.hidden = !force;
+  if (force) inpPair.focus();
+}
+
+async function refreshFromCloud() {
+  if (!pairCode) return;
+  memories = await cloudList(pairCode);
+  render();
+}
+
+function attachRealtime() {
+  if (!pairCode) return;
+  if (channel) {
+    try { channel.unsubscribe(); } catch {}
+    channel = null;
+  }
+  channel = subscribePair(pairCode, async () => {
+    await refreshFromCloud();
+  });
+}
+
+function render() {
   list.innerHTML = "";
 
-  for (let idx = 0; idx < memories.length; idx++) {
-    const m = memories[idx];
-
+  memories.forEach((m, idx) => {
     const li = document.createElement("li");
     li.className = "item";
 
@@ -122,30 +75,24 @@ async function render() {
     li.querySelector(".text").textContent = m.text || "";
 
     const img = li.querySelector(".photo");
-    if (m.photoId) {
-      const url = await getPhotoUrl(m.photoId);
-      if (url) {
-        objectUrls.add(url);
-        img.src = url;
-        img.hidden = false;
-      }
+    const url = photoPublicUrl(m.photo_path);
+    if (url) {
+      img.src = url;
+      img.hidden = false;
     }
 
     list.appendChild(li);
-  }
+  });
 
-  // Delete handlers
   list.querySelectorAll("button[data-del]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const i = Number(btn.getAttribute("data-del"));
-      const removed = memories.splice(i, 1)[0];
+      const m = memories[i];
+      if (!m) return;
 
-      // Foto in DB mitlöschen
-      if (removed?.photoId) await deletePhoto(removed.photoId);
-
-      saveMemories(memories);
+      await cloudDelete(pairCode, m.id, m.photo_path);
+      await refreshFromCloud();
       randomBox.hidden = true;
-      await render();
     });
   });
 }
@@ -158,6 +105,10 @@ btnRandom.addEventListener("click", () => {
 });
 
 btnAdd.addEventListener("click", () => {
+  if (!pairCode) {
+    showPairPanel(true);
+    return;
+  }
   addPanel.hidden = false;
   inpTitle.value = "";
   inpText.value = "";
@@ -174,29 +125,53 @@ btnSave.addEventListener("click", async () => {
   const text = inpText.value.trim();
   const file = inpPhoto.files && inpPhoto.files[0];
 
+  if (!pairCode) {
+    showPairPanel(true);
+    return;
+  }
   if (!title && !text && !file) return;
 
-  const id = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
-  let photoId = null;
-
-  if (file) {
-    photoId = `photo_${id}`;
-    await putPhoto(photoId, file);
-  }
-
-  memories.unshift({
-    id,
-    title: title || "Erinnerung",
-    text,
-    photoId
-  });
-
-  saveMemories(memories);
-
+  await cloudAdd(pairCode, title || "Erinnerung", text, file);
   addPanel.hidden = true;
   randomBox.hidden = true;
 
-  await render();
+  await refreshFromCloud();
 });
 
-render();
+// Pair buttons
+btnPairSave.addEventListener("click", async () => {
+  const code = normalizePair(inpPair.value);
+  if (!code) return;
+
+  pairCode = code;
+  localStorage.setItem(PAIR_KEY, pairCode);
+
+  pairPanel.hidden = true;
+  await refreshFromCloud();
+  attachRealtime();
+});
+
+btnPairClear.addEventListener("click", () => {
+  localStorage.removeItem(PAIR_KEY);
+  pairCode = "";
+  memories = [];
+  render();
+  randomBox.hidden = true;
+
+  if (channel) {
+    try { channel.unsubscribe(); } catch {}
+    channel = null;
+  }
+
+  showPairPanel(true);
+});
+
+// Start
+(async function init() {
+  if (!pairCode) {
+    showPairPanel(true);
+    return;
+  }
+  await refreshFromCloud();
+  attachRealtime();
+})();

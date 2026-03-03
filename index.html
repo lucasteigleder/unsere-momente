@@ -11,6 +11,7 @@
   <title>Unsere Momente</title>
 
   <link rel="manifest" href="manifest.webmanifest" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -21,6 +22,19 @@
             <div class="splashSub">Für dich.</div>
         </div>
     </div>
+    <section id="pairPanel" class="card pair" hidden>
+        <h2>Paar-Code</h2>
+        <p class="sub">Damit ihr beide die selben Erinnerungen seht.</p>
+        <label>
+            Code
+            <input id="inpPair" placeholder="JanaLuca20072024" />
+        </label>
+        <div class="row">
+            <button id="btnPairSave">Verbinden</button>
+            <button id="btnPairClear" class="secondary">Trennen</button>
+        </div>
+        <p class="hint">Tipp: Code geheim halten.</p>
+    </section>
   <main class="wrap">
     <header class="card">
       <h1>Unsere Momente</h1>
@@ -71,6 +85,7 @@
   </main>
 
   <script src="app.js"></script>
+  <script src="cloud.js"></script>
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./sw.js");
