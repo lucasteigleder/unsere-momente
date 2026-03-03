@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111111" />
+  <title>Unsere Momente</title>
+
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="card">
+      <h1>Unsere Momente</h1>
+      <p class="sub">Für Tage, an denen wir uns vermissen.</p>
+
+      <div class="row">
+        <button id="btnRandom">Zufalls-Erinnerung</button>
+        <button id="btnAdd" class="secondary">Neue Erinnerung</button>
+      </div>
+
+      <div id="randomBox" class="randomBox" hidden></div>
+    </header>
+
+    <section class="card">
+      <h2>Erinnerungen</h2>
+      <ul id="list" class="list"></ul>
+    </section>
+
+    <section id="addPanel" class="card" hidden>
+      <h2>Neue Erinnerung</h2>
+
+      <label>
+        Titel
+        <input id="inpTitle" maxlength="80" placeholder="z.B. Unser erstes Date" />
+      </label>
+
+      <label>
+        Text
+        <textarea id="inpText" rows="4" maxlength="500" placeholder="Was war daran so schön?"></textarea>
+      </label>
+
+      <div class="row">
+        <button id="btnSave">Speichern</button>
+        <button id="btnCancel" class="secondary">Abbrechen</button>
+      </div>
+
+      <p class="hint">Wird nur auf diesem Gerät gespeichert (lokal).</p>
+    </section>
+
+    <footer class="footer">
+      <small>❤️</small>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js");
+    }
+  </script>
+</body>
+</html>
