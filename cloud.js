@@ -28,7 +28,11 @@ async function cloudAdd(pairCode, title, text, file) {
       .from("photos")
       .upload(photo_path, file, { upsert: false });
 
-    if (upErr) throw upErr;
+    if (upErr) {
+        console.error("UPLOAD ERROR:", upErr);
+        alert.apply("upload Fehler: " + upErr.message);
+        throw upErr;
+    };
   }
 
   const { data, error } = await sb
