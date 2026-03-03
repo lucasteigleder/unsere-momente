@@ -1,34 +1,46 @@
+// Splash nach kurzem Moment entfernen
 window.addEventListener("load", () => {
-    const s = document.getElementById("splash");
-    if (!s) return;
-    setTimeout(() => s.remove(), 600);
+  const s = document.getElementById("splash");
+  if (!s) return;
+  setTimeout(() => s.remove(), 600);
 });
 
-const STORAGE_KEY = "unsere_momente_v1";
+const STORAGE_KEY = "unsere_momente_v2";
 const DB_NAME = "unsere_momente_db";
 const DB_STORE = "photos";
-const inpPhoto = document.getElementById("inpPhoto");
 
-function openDb(){
-    return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, 1);
-        req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-    });
+// ---------- IndexedDB helpers ----------
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-async function putPhoto(id, blob){
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(DB_STORE, "readwrite");
-        tx.objectStore(DB_STORE).put(blob, id);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-    })
+async function putPhoto(id, blob) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, "readwrite");
+    tx.objectStore(DB_STORE).put(blob, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
-async function getPhotoUrl(id){
+async function deletePhoto(id) {
+  if (!id) return;
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, "readwrite");
+    tx.objectStore(DB_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getPhotoUrl(id) {
   if (!id) return null;
   const db = await openDb();
   const blob = await new Promise((resolve, reject) => {
@@ -41,10 +53,11 @@ async function getPhotoUrl(id){
   return URL.createObjectURL(blob);
 }
 
+// ---------- Default Inhalte ----------
 const defaults = [
-  { title: "Du fehlst mir", text: "Wenn du das liest: Ich denk an dich. ❤️" },
-  { title: "Unser Lieblingsding", text: "Wie wir immer über denselben Quatsch lachen." },
-  { title: "Nächstes Wiedersehen", text: "Wir schaffen das. Bald sehen wir uns." }
+  { id: "d1", title: "Du fehlst mir", text: "Wenn du das liest: Ich denk an dich. ❤️", photoId: null },
+  { id: "d2", title: "Unser Lieblingsding", text: "Wie wir immer über denselben Quatsch lachen.", photoId: null },
+  { id: "d3", title: "Nächstes Wiedersehen", text: "Wir schaffen das. Bald sehen wir uns.", photoId: null }
 ];
 
 function loadMemories() {
@@ -64,6 +77,7 @@ function saveMemories(memories) {
 
 let memories = loadMemories();
 
+// ---------- DOM ----------
 const list = document.getElementById("list");
 const randomBox = document.getElementById("randomBox");
 
@@ -73,43 +87,65 @@ const btnAdd = document.getElementById("btnAdd");
 const addPanel = document.getElementById("addPanel");
 const inpTitle = document.getElementById("inpTitle");
 const inpText = document.getElementById("inpText");
+const inpPhoto = document.getElementById("inpPhoto");
 const btnSave = document.getElementById("btnSave");
 const btnCancel = document.getElementById("btnCancel");
 
-function render() {
+// Damit wir ObjectURLs wieder freigeben können:
+const objectUrls = new Set();
+
+function clearObjectUrls() {
+  for (const url of objectUrls) URL.revokeObjectURL(url);
+  objectUrls.clear();
+}
+
+async function render() {
+  clearObjectUrls();
   list.innerHTML = "";
-  memories.forEach((m, idx) => {
+
+  for (let idx = 0; idx < memories.length; idx++) {
+    const m = memories[idx];
+
     const li = document.createElement("li");
     li.className = "item";
+
     li.innerHTML = `
       <div class="title"></div>
       <div class="text"></div>
-      <img class="photo" hidden />
-      <div class="row" style="margin-top:10px;">
+      <img class="photo" hidden alt="Foto zur Erinnerung" />
+      <div class="row actions">
         <button class="secondary" data-del="${idx}">Löschen</button>
       </div>
     `;
+
     li.querySelector(".title").textContent = m.title || "Ohne Titel";
     li.querySelector(".text").textContent = m.text || "";
-    list.appendChild(li);
-  });
 
-  const img = li.querySelector(".photo");
-  if (m.photoId) {
-    getPhotoUrl(m.photoId).then(url => {
-        if (!url) return;
+    const img = li.querySelector(".photo");
+    if (m.photoId) {
+      const url = await getPhotoUrl(m.photoId);
+      if (url) {
+        objectUrls.add(url);
         img.src = url;
         img.hidden = false;
-    });
+      }
+    }
+
+    list.appendChild(li);
   }
 
-  list.querySelectorAll("button[data-del]").forEach(btn => {
-    btn.addEventListener("click", () => {
+  // Delete handlers
+  list.querySelectorAll("button[data-del]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
       const i = Number(btn.getAttribute("data-del"));
-      memories.splice(i, 1);
+      const removed = memories.splice(i, 1)[0];
+
+      // Foto in DB mitlöschen
+      if (removed?.photoId) await deletePhoto(removed.photoId);
+
       saveMemories(memories);
-      render();
       randomBox.hidden = true;
+      await render();
     });
   });
 }
@@ -125,6 +161,7 @@ btnAdd.addEventListener("click", () => {
   addPanel.hidden = false;
   inpTitle.value = "";
   inpText.value = "";
+  inpPhoto.value = "";
   inpTitle.focus();
 });
 
@@ -135,23 +172,31 @@ btnCancel.addEventListener("click", () => {
 btnSave.addEventListener("click", async () => {
   const title = inpTitle.value.trim();
   const text = inpText.value.trim();
-  if (!title && !text && !(inpPhoto.files && inpPhoto.files[0])) return;
+  const file = inpPhoto.files && inpPhoto.files[0];
 
-  const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+  if (!title && !text && !file) return;
+
+  const id = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
   let photoId = null;
 
-  const file = inpPhoto.files && inpPhoto.files[0];
   if (file) {
     photoId = `photo_${id}`;
     await putPhoto(photoId, file);
   }
 
-  memories.unshift({ id, title: title || "Erinnerung", text, photoId });
+  memories.unshift({
+    id,
+    title: title || "Erinnerung",
+    text,
+    photoId
+  });
+
   saveMemories(memories);
-  render();
 
   addPanel.hidden = true;
   randomBox.hidden = true;
+
+  await render();
 });
 
 render();
