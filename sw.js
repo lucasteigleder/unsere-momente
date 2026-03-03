@@ -1,11 +1,11 @@
-const CACHE = "unsere-momente-v3";
+const CACHE = "unsere-momente-v4";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
+  "./cloud.js",
   "./app.js",
-  "./manifest.webmanifest",
-  "./cloud.js"
+  "./manifest.webmanifest"
 ];
 
 self.addEventListener("install", (e) => {
