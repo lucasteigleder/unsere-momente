@@ -20,18 +20,15 @@
   <!-- OneSignal (Web SDK v16) -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
-      await OneSignal.init({
-        appId: "44a121f4-9431-40cd-acf3-30702c3ece16",
-
-        // WICHTIG für GitHub Pages Unterordner + eigener PWA Service Worker:
-        serviceWorkerPath: "/unsere-momente/push/OneSignalSDKWorker.js",
-        serviceWorkerUpdaterPath: "/unsere-momente/push/OneSignalSDKUpdaterWorker.js",
-        serviceWorkerParam: { scope: "/unsere-momente/push/" }
-      });
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "44a121f4-9431-40cd-acf3-30702c3ece16",
+      serviceWorkerPath: "/unsere-momente/sw.js",
+      serviceWorkerParam: { scope: "/unsere-momente/" }
     });
-  </script>
+  });
+</script>
 </head>
 
 <body>

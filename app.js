@@ -56,6 +56,37 @@ function attachRealtime() {
   });
 }
 
+/**
+ * Push aktivieren: Permission + Opt-In + Tag setzen
+ * Wichtig: Ohne Opt-In bleibt Audience=0
+ */
+async function enablePush() {
+  if (!pairCode) {
+    alert("Bitte erst Paar-Code setzen.");
+    showPairPanel(true);
+    return;
+  }
+
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    // Permission (iOS verlangt User-Klick -> kommt von Button/Verbinden)
+    await OneSignal.Notifications.requestPermission();
+
+    // WICHTIG: wirklich subscriben/opt-in
+    // (SDK v16 unterstützt normalerweise PushSubscription.optIn())
+    if (OneSignal.User?.PushSubscription?.optIn) {
+      await OneSignal.User.PushSubscription.optIn();
+    } else if (OneSignal.Notifications?.setOptIn) {
+      await OneSignal.Notifications.setOptIn(true);
+    }
+
+    // Tag setzen -> damit Edge Function nach pair_code targeten kann
+    await OneSignal.User.addTags({ pair_code: pairCode });
+
+    alert("Push ist aktiv ✅");
+  });
+}
+
 function render() {
   list.innerHTML = "";
 
@@ -147,28 +178,20 @@ btnPairSave.addEventListener("click", async () => {
   pairCode = code;
   localStorage.setItem(PAIR_KEY, pairCode);
 
-  pairPanel.hidden = true;
+  // Panel NICHT sofort verstecken -> erst Push aktivieren lassen
+  // (iOS braucht User Action. Der Klick auf "Verbinden" zählt!)
   await refreshFromCloud();
   attachRealtime();
+
+  // Direkt Push aktivieren + tag setzen
+  await enablePush();
+
+  // Danach darf das Panel weg
+  pairPanel.hidden = true;
 });
 
 btnPush.addEventListener("click", async () => {
-    if (!pairCode) {
-        alert("Bitte erst Paar-Code setzen.");
-        showPairPanel(true);
-        return;
-    }
-
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    // iOS: Permission muss durch User-Klick passieren (das ist dieser Button)
-    await OneSignal.Notifications.requestPermission();
-
-    // Pair-Code als Tag setzen -> wir können später gezielt an alle Geräte mit diesem Code pushen
-    await OneSignal.User.addTags({ pair_code: pairCode });
-
-    alert("Push ist aktiv ✅");
- });
+  await enablePush();
 });
 
 btnPairClear.addEventListener("click", () => {
@@ -194,4 +217,10 @@ btnPairClear.addEventListener("click", () => {
   }
   await refreshFromCloud();
   attachRealtime();
+
+  // Optional: wenn schon Pair-Code existiert, Tag setzen (ohne Permission-Prompt)
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    try { await OneSignal.User.addTags({ pair_code: pairCode }); } catch {}
+  });
 })();
