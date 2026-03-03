@@ -24,6 +24,7 @@ const pairPanel = document.getElementById("pairPanel");
 const inpPair = document.getElementById("inpPair");
 const btnPairSave = document.getElementById("btnPairSave");
 const btnPairClear = document.getElementById("btnPairClear");
+const btnPush = document.getElementById("btnPush");
 
 let pairCode = (localStorage.getItem(PAIR_KEY) || "").trim();
 let memories = [];
@@ -149,6 +150,25 @@ btnPairSave.addEventListener("click", async () => {
   pairPanel.hidden = true;
   await refreshFromCloud();
   attachRealtime();
+});
+
+btnPush.addEventListener("click", async () => {
+    if (!pairCode) {
+        alert("Bitte erst Paar-Code setzen.");
+        showPairPanel(true);
+        return;
+    }
+
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    // iOS: Permission muss durch User-Klick passieren (das ist dieser Button)
+    await OneSignal.Notifications.requestPermission();
+
+    // Pair-Code als Tag setzen -> wir können später gezielt an alle Geräte mit diesem Code pushen
+    await OneSignal.User.addTags({ pair_code: pairCode });
+
+    alert("Push ist aktiv ✅");
+ });
 });
 
 btnPairClear.addEventListener("click", () => {
