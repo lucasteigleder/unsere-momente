@@ -1,6 +1,6 @@
 // >>> HIER DEINE SUPABASE DATEN EINTRAGEN <<<
 const SUPABASE_URL = "https://lsujbaaslkhsuaejmlhg.supabase.co";
-const SUPABASE_ANON_KEY = "JanaLuca20072024";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzdWpiYWFzbGtoc3VhZWptbGhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1Mjk3ODUsImV4cCI6MjA4ODEwNTc4NX0.8dnAqH2W-YnnwvQz4d6shC_9m82HKYaxiunkTtKh5U8";
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
