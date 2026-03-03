@@ -30,6 +30,9 @@ let pairCode = (localStorage.getItem(PAIR_KEY) || "").trim();
 let memories = [];
 let channel = null;
 
+// Edit state: { id } oder null
+let editing = null;
+
 function normalizePair(s) {
   return (s || "").trim().toUpperCase();
 }
@@ -58,7 +61,6 @@ function attachRealtime() {
 
 /**
  * Push aktivieren: Permission + Opt-In + Tag setzen
- * Wichtig: Ohne Opt-In bleibt Audience=0
  */
 async function enablePush() {
   if (!pairCode) {
@@ -69,22 +71,43 @@ async function enablePush() {
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
-    // Permission (iOS verlangt User-Klick -> kommt von Button/Verbinden)
     await OneSignal.Notifications.requestPermission();
 
-    // WICHTIG: wirklich subscriben/opt-in
-    // (SDK v16 unterstützt normalerweise PushSubscription.optIn())
+    // wirklich opt-in
     if (OneSignal.User?.PushSubscription?.optIn) {
       await OneSignal.User.PushSubscription.optIn();
     } else if (OneSignal.Notifications?.setOptIn) {
       await OneSignal.Notifications.setOptIn(true);
     }
 
-    // Tag setzen -> damit Edge Function nach pair_code targeten kann
     await OneSignal.User.addTags({ pair_code: pairCode });
-
-    alert("Push ist aktiv ✅");
   });
+}
+
+function openAddPanelForNew() {
+  editing = null;
+  btnSave.textContent = "Speichern";
+  addPanel.hidden = false;
+  inpTitle.value = "";
+  inpText.value = "";
+  inpPhoto.value = "";
+  inpTitle.focus();
+}
+
+function openAddPanelForEdit(m) {
+  editing = { id: m.id };
+  btnSave.textContent = "Änderungen speichern";
+  addPanel.hidden = false;
+  inpTitle.value = m.title || "";
+  inpText.value = m.text || "";
+  inpPhoto.value = ""; // Foto bleibt unverändert (kein Replace)
+  inpTitle.focus();
+}
+
+function closeAddPanel() {
+  addPanel.hidden = true;
+  editing = null;
+  btnSave.textContent = "Speichern";
 }
 
 function render() {
@@ -99,6 +122,7 @@ function render() {
       <div class="text"></div>
       <img class="photo" hidden alt="Foto zur Erinnerung" />
       <div class="row actions">
+        <button class="secondary" data-edit="${idx}">Bearbeiten</button>
         <button class="secondary" data-del="${idx}">Löschen</button>
       </div>
     `;
@@ -116,6 +140,7 @@ function render() {
     list.appendChild(li);
   });
 
+  // Delete
   list.querySelectorAll("button[data-del]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const i = Number(btn.getAttribute("data-del"));
@@ -127,8 +152,19 @@ function render() {
       randomBox.hidden = true;
     });
   });
+
+  // Edit
+  list.querySelectorAll("button[data-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.getAttribute("data-edit"));
+      const m = memories[i];
+      if (!m) return;
+      openAddPanelForEdit(m);
+    });
+  });
 }
 
+// Buttons
 btnRandom.addEventListener("click", () => {
   if (memories.length === 0) return;
   const m = memories[Math.floor(Math.random() * memories.length)];
@@ -141,15 +177,11 @@ btnAdd.addEventListener("click", () => {
     showPairPanel(true);
     return;
   }
-  addPanel.hidden = false;
-  inpTitle.value = "";
-  inpText.value = "";
-  inpPhoto.value = "";
-  inpTitle.focus();
+  openAddPanelForNew();
 });
 
 btnCancel.addEventListener("click", () => {
-  addPanel.hidden = true;
+  closeAddPanel();
 });
 
 btnSave.addEventListener("click", async () => {
@@ -161,12 +193,26 @@ btnSave.addEventListener("click", async () => {
     showPairPanel(true);
     return;
   }
+
+  // EDIT: nur Titel/Text updaten, Foto bleibt gleich
+  if (editing) {
+    await cloudUpdate(pairCode, editing.id, {
+      title: title || "Erinnerung",
+      text
+    });
+
+    closeAddPanel();
+    randomBox.hidden = true;
+    await refreshFromCloud();
+    return;
+  }
+
+  // NEU
   if (!title && !text && !file) return;
 
   await cloudAdd(pairCode, title || "Erinnerung", text, file);
-  addPanel.hidden = true;
+  closeAddPanel();
   randomBox.hidden = true;
-
   await refreshFromCloud();
 });
 
@@ -178,15 +224,12 @@ btnPairSave.addEventListener("click", async () => {
   pairCode = code;
   localStorage.setItem(PAIR_KEY, pairCode);
 
-  // Panel NICHT sofort verstecken -> erst Push aktivieren lassen
-  // (iOS braucht User Action. Der Klick auf "Verbinden" zählt!)
   await refreshFromCloud();
   attachRealtime();
 
-  // Direkt Push aktivieren + tag setzen
+  // iOS user-action: direkt Push aktivieren
   await enablePush();
 
-  // Danach darf das Panel weg
   pairPanel.hidden = true;
 });
 
@@ -215,10 +258,11 @@ btnPairClear.addEventListener("click", () => {
     showPairPanel(true);
     return;
   }
+
   await refreshFromCloud();
   attachRealtime();
 
-  // Optional: wenn schon Pair-Code existiert, Tag setzen (ohne Permission-Prompt)
+  // Tag setzen (ohne Prompt)
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try { await OneSignal.User.addTags({ pair_code: pairCode }); } catch {}

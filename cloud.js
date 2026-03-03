@@ -80,3 +80,13 @@ function subscribePair(pairCode, onChange) {
     )
     .subscribe();
 }
+
+async function cloudUpdate(pairCode, id, patch) {
+    const { error } = await sb
+    .from("memories")
+    .update(patch)
+    .eq("id", id)
+    .eq("pair_code", pairCode)
+
+    if (error) throw error;
+}
