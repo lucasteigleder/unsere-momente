@@ -30,7 +30,7 @@ let pairCode = (localStorage.getItem(PAIR_KEY) || "").trim();
 let memories = [];
 let channel = null;
 
-// Edit state: { id } oder null
+// Edit state: { id, photo_path } oder null
 let editing = null;
 
 function normalizePair(s) {
@@ -73,7 +73,6 @@ async function enablePush() {
   OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.Notifications.requestPermission();
 
-    // wirklich opt-in
     if (OneSignal.User?.PushSubscription?.optIn) {
       await OneSignal.User.PushSubscription.optIn();
     } else if (OneSignal.Notifications?.setOptIn) {
@@ -95,12 +94,12 @@ function openAddPanelForNew() {
 }
 
 function openAddPanelForEdit(m) {
-  editing = { id: m.id };
+  editing = { id: m.id, photo_path: m.photo_path || null };
   btnSave.textContent = "Änderungen speichern";
   addPanel.hidden = false;
   inpTitle.value = m.title || "";
   inpText.value = m.text || "";
-  inpPhoto.value = ""; // Foto bleibt unverändert (kein Replace)
+  inpPhoto.value = ""; // nur wenn du ein neues Foto wählst, wird ersetzt
   inpTitle.focus();
 }
 
@@ -108,6 +107,7 @@ function closeAddPanel() {
   addPanel.hidden = true;
   editing = null;
   btnSave.textContent = "Speichern";
+  inpPhoto.value = "";
 }
 
 function render() {
@@ -194,12 +194,15 @@ btnSave.addEventListener("click", async () => {
     return;
   }
 
-  // EDIT: nur Titel/Text updaten, Foto bleibt gleich
+  // EDIT: Titel/Text + optional neues Foto
   if (editing) {
-    await cloudUpdate(pairCode, editing.id, {
-      title: title || "Erinnerung",
-      text
-    });
+    await cloudUpdateWithPhoto(
+      pairCode,
+      editing.id,
+      { title: title || "Erinnerung", text },
+      file || null,
+      editing.photo_path || null
+    );
 
     closeAddPanel();
     randomBox.hidden = true;
@@ -227,9 +230,7 @@ btnPairSave.addEventListener("click", async () => {
   await refreshFromCloud();
   attachRealtime();
 
-  // iOS user-action: direkt Push aktivieren
   await enablePush();
-
   pairPanel.hidden = true;
 });
 
@@ -262,7 +263,6 @@ btnPairClear.addEventListener("click", () => {
   await refreshFromCloud();
   attachRealtime();
 
-  // Tag setzen (ohne Prompt)
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try { await OneSignal.User.addTags({ pair_code: pairCode }); } catch {}

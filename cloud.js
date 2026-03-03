@@ -90,3 +90,34 @@ async function cloudUpdate(pairCode, id, patch) {
 
     if (error) throw error;
 }
+
+async function cloudUpdateWithPhoto(pairCode, id, patch, newFile, oldPhotoPath) {
+  let photo_path = oldPhotoPath || null;
+
+  // Wenn neues Foto gewählt wurde: hochladen + photo_path ersetzen
+  if (newFile) {
+    const ext = (newFile.name.split(".").pop() || "jpg").toLowerCase();
+    const filename = `${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+    photo_path = `${pairCode}/${filename}`;
+
+    const { error: upErr } = await sb
+      .storage
+      .from("photos")
+      .upload(photo_path, newFile, { upsert: false });
+
+    if (upErr) throw upErr;
+
+    // altes Foto löschen (wenn vorhanden)
+    if (oldPhotoPath) {
+      await sb.storage.from("photos").remove([oldPhotoPath]);
+    }
+  }
+
+  const { error } = await sb
+    .from("memories")
+    .update({ ...patch, photo_path })
+    .eq("id", id)
+    .eq("pair_code", pairCode);
+
+  if (error) throw error;
+}
