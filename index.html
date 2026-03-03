@@ -4,12 +4,23 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#111111" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Momente" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>Unsere Momente</title>
 
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+    <div id="splash" class="splash">
+        <div class="splashInner">
+            <div class="splashLogo">❤️</div>
+            <div class="splashTitle">Unsere Momente</div>
+            <div class="splashSub">Für dich.</div>
+        </div>
+    </div>
   <main class="wrap">
     <header class="card">
       <h1>Unsere Momente</h1>
@@ -39,6 +50,10 @@
       <label>
         Text
         <textarea id="inpText" rows="4" maxlength="500" placeholder="Was war daran so schön?"></textarea>
+      </label>
+
+      <label>
+        <input id="inpPhoto" type="file" accept="image/*" />
       </label>
 
       <div class="row">

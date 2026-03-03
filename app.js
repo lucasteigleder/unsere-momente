@@ -1,4 +1,45 @@
+window.addEventListener("load", () => {
+    const s = document.getElementById("splash");
+    if (!s) return;
+    setTimeout(() => s.remove(), 600);
+});
+
 const STORAGE_KEY = "unsere_momente_v1";
+const DB_NAME = "unsere_momente_db";
+const DB_STORE = "photos";
+const inpPhoto = document.getElementById("inpPhoto");
+
+function openDb(){
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function putPhoto(id, blob){
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, "readwrite");
+        tx.objectStore(DB_STORE).put(blob, id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    })
+}
+
+async function getPhotoUrl(id){
+  if (!id) return null;
+  const db = await openDb();
+  const blob = await new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, "readonly");
+    const req = tx.objectStore(DB_STORE).get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+  if (!blob) return null;
+  return URL.createObjectURL(blob);
+}
 
 const defaults = [
   { title: "Du fehlst mir", text: "Wenn du das liest: Ich denk an dich. ❤️" },
@@ -43,6 +84,7 @@ function render() {
     li.innerHTML = `
       <div class="title"></div>
       <div class="text"></div>
+      <img class="photo" hidden />
       <div class="row" style="margin-top:10px;">
         <button class="secondary" data-del="${idx}">Löschen</button>
       </div>
@@ -51,6 +93,15 @@ function render() {
     li.querySelector(".text").textContent = m.text || "";
     list.appendChild(li);
   });
+
+  const img = li.querySelector(".photo");
+  if (m.photoId) {
+    getPhotoUrl(m.photoId).then(url => {
+        if (!url) return;
+        img.src = url;
+        img.hidden = false;
+    });
+  }
 
   list.querySelectorAll("button[data-del]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -81,12 +132,21 @@ btnCancel.addEventListener("click", () => {
   addPanel.hidden = true;
 });
 
-btnSave.addEventListener("click", () => {
+btnSave.addEventListener("click", async () => {
   const title = inpTitle.value.trim();
   const text = inpText.value.trim();
-  if (!title && !text) return;
+  if (!title && !text && !(inpPhoto.files && inpPhoto.files[0])) return;
 
-  memories.unshift({ title: title || "Erinnerung", text });
+  const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+  let photoId = null;
+
+  const file = inpPhoto.files && inpPhoto.files[0];
+  if (file) {
+    photoId = `photo_${id}`;
+    await putPhoto(photoId, file);
+  }
+
+  memories.unshift({ id, title: title || "Erinnerung", text, photoId });
   saveMemories(memories);
   render();
 
