@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#111111" />
+
+  <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Momente" />
@@ -17,20 +19,21 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- OneSignal (Web SDK v16) -->
+  <!-- OneSignal SDK -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "44a121f4-9431-40cd-acf3-30702c3ece16",
-      serviceWorkerPath: "/unsere-momente/OneSignalSDKWorker.js",
-      serviceWorkerUpdaterPath: "/unsere-momente/OneSignalSDKUpdaterWorker.js",
-      serviceWorkerParam: { scope: "/unsere-momente/" }
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "44a121f4-9431-40cd-acf3-30702c3ece16",
 
+        // WICHTIG: Pfade + Scope müssen zu GitHub Pages Project-Pfad passen
+        serviceWorkerPath: "/unsere-momente/OneSignalSDKWorker.js",
+        serviceWorkerUpdaterPath: "/unsere-momente/OneSignalSDKUpdaterWorker.js",
+        serviceWorkerParam: { scope: "/unsere-momente/" }
+      });
     });
-  });
-</script>
+  </script>
 </head>
 
 <body>
@@ -106,7 +109,6 @@
         <div id="editPhotosGrid" class="editPhotosGrid"></div>
       </div>
 
-      <!-- Optional: Text anpassen, weil ihr jetzt Cloud nutzt -->
       <p class="hint">Wird mit eurem Paar-Code synchronisiert.</p>
     </section>
 
@@ -115,25 +117,25 @@
     </footer>
   </main>
 
-  <!-- Lightbox (Vollbild Galerie)-->
-   <div id="lightbox" class="lightbox" hidden>
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox" hidden>
     <div class="lightboxBackdrop" aria-hidden="true"></div>
-      <div class="lightboxContent" role="dialog" aria-modal="true">
+    <div class="lightboxContent" role="dialog" aria-modal="true">
       <button id="lightboxClose" class="lightboxClose">×</button>
       <div id="lightboxTrack" class="lightboxTrack"></div>
       <div id="lightboxDots" class="lightboxDots"></div>
     </div>
   </div>
 
-  <!-- App Scripts: cloud.js MUSS vor app.js -->
+  <!-- App -->
   <script src="cloud.js"></script>
   <script src="app.js"></script>
 
-  <!-- Dein PWA Service Worker (Caching/Offline) -->
- <!-- <script>
+  <!-- PWA Worker: NUR wenn du ihn wirklich nutzen willst -->
+  <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js");
+      navigator.serviceWorker.register("/unsere-momente/sw.js", { scope: "/unsere-momente/" });
     }
-  </script> -->
+  </script>
 </body>
 </html>
