@@ -221,7 +221,11 @@ lightboxClose.addEventListener("click", (e) => {
 });
 
 lightbox.addEventListener("click", (e) => {
-  if (e.target === lightbox) closeLightbox();
+  if (
+    e.target === lightbox ||
+    e.target.classList.contains("lightboxBackdrop")
+  ) { closeLightbox();
+  }
 });
 
 window.addEventListener("keydown", (e) => {

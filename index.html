@@ -115,13 +115,13 @@
 
   <!-- Lightbox (Vollbild Galerie)-->
    <div id="lightbox" class="lightbox" hidden>
-    <button id="lightboxClose" class="lightboxClose" aria-label="Schließen">✕</button>
-
-    <div class="lightboxInner">
+    <div class="lightboxBackdrop" aria-hidden="true"></div>
+      <div class="lightboxContent" role="dialog" aria-modal="true">
+      <button id="lightboxClose" class="lightboxClose">×</button>
       <div id="lightboxTrack" class="lightboxTrack"></div>
       <div id="lightboxDots" class="lightboxDots"></div>
     </div>
-   </div>
+  </div>
 
   <!-- App Scripts: cloud.js MUSS vor app.js -->
   <script src="cloud.js"></script>
