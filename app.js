@@ -199,18 +199,31 @@ function openLightbox(urls, startIndex = 0) {
 function closeLightbox() {
   lightbox.hidden = true;
   document.body.style.overflow = "";
-
+  lightboxTrack.innerHTML = "";
+  lightboxDots.innerHTML = "";
   if (lightbox._onScroll) {
     lightboxTrack.removeEventListener("scroll", lightbox._onScroll);
     lightbox._onScroll = null;
   }
-  lightboxDots.onclick = null;
 }
 
-lightboxClose.addEventListener("click", closeLightbox);
+// ✅ IMMER beim Start schließen (auch wenn Cache/State kaputt ist)
+(function bootClose() {
+  const lb = document.getElementById("lightbox");
+  if (lb) lb.hidden = true;
+  document.body.style.overflow = "";
+})();
+
+lightboxClose.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  closeLightbox();
+});
+
 lightbox.addEventListener("click", (e) => {
   if (e.target === lightbox) closeLightbox();
 });
+
 window.addEventListener("keydown", (e) => {
   if (!lightbox.hidden && e.key === "Escape") closeLightbox();
 });
