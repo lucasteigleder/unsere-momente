@@ -94,12 +94,12 @@ function openAddPanelForNew() {
 }
 
 function openAddPanelForEdit(m) {
-  editing = { id: m.id };
+  editing = { id: m.id, photo_paths: Array.isArray(m.photo_paths) ? m.photo_paths : [] };
   btnSave.textContent = "Änderungen speichern";
   addPanel.hidden = false;
   inpTitle.value = m.title || "";
   inpText.value = m.text || "";
-  inpPhoto.value = ""; // Bilder werden in dieser Version beim Edit nicht geändert
+  inpPhoto.value = ""; // Bei Änderung werden die alten Bilder ersetzt
   inpTitle.focus();
 }
 
@@ -208,8 +208,6 @@ btnSave.addEventListener("click", async () => {
   const title = inpTitle.value.trim();
   const text = inpText.value.trim();
   const files = inpPhoto.files;
-  alert("Files: " + (files ? files.length : "null"));
-  if (files && files[0]) alert("First: " + files [0].name);
   const hasFiles = files && files.length > 0;
 
   if (!pairCode) {
@@ -219,10 +217,14 @@ btnSave.addEventListener("click", async () => {
 
   // EDIT: nur Titel/Text (Bilder unverändert)
   if (editing) {
-    await cloudUpdate(pairCode, editing.id, {
-      title: title || "Erinnerung",
-      text
-    });
+    await cloudUpdateWithPhotos(
+      pairCode,
+      editing.id,
+      { title: title || "Erinnerung", text },
+      files,
+      editing.photo_paths
+    );
+  
 
     closeAddPanel();
     randomBox.hidden = true;

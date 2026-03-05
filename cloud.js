@@ -91,3 +91,40 @@ function subscribePair(pairCode, onChange) {
     )
     .subscribe();
 }
+
+async function cloudUpdateWithPhotos(pairCode, id, patch, files, oldPhotoPaths) {
+  let photo_paths = Array.isArray(oldPhotoPaths) ? oldPhotoPaths.slice() : [];
+
+  const fileList = files ? Array.from(files) : [];
+  const hasNewFiles = fileList.length > 0;
+
+  // Wenn neue Dateien gewählt wurden -> alte löschen + neue hochladen + ersetzen
+  if (hasNewFiles) {
+    // Alte löschen
+    if (photo_paths.length > 0) {
+      await sb.storage.from("photos").remove(photo_paths);
+    }
+
+    // Neue hochladen
+    photo_paths = [];
+    for (const file of fileList) {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const filename = `${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+      const path = `${pairCode}/${filename}`;
+
+      const { error: upErr } = await sb.storage.from("photos").upload(path, file, { upsert: false });
+      if (upErr) throw upErr;
+
+      photo_paths.push(path);
+    }
+  }
+
+  // DB Update
+  const { error } = await sb
+    .from("memories")
+    .update({ ...patch, photo_paths })
+    .eq("id", id)
+    .eq("pair_code", pairCode);
+
+  if (error) throw error;
+}
