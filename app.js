@@ -18,6 +18,8 @@ const inpText = document.getElementById("inpText");
 const inpPhoto = document.getElementById("inpPhoto");
 const btnSave = document.getElementById("btnSave");
 const btnCancel = document.getElementById("btnCancel");
+const editPhotos = document.getElementById("editPhotos");
+const editPhotosGrid = document.getElementById("editPhotosGrid");
 
 // Pair UI
 const pairPanel = document.getElementById("pairPanel");
@@ -91,16 +93,22 @@ function openAddPanelForNew() {
   inpText.value = "";
   inpPhoto.value = "";
   inpTitle.focus();
+  editPhotos.hidden = true;
+  editPhotosGrid.innerHTML = "";
 }
 
 function openAddPanelForEdit(m) {
-  editing = { id: m.id, photo_paths: Array.isArray(m.photo_paths) ? m.photo_paths : [] };
+  const paths = Array.isArray(m.photo_paths) ? m.photo_paths : [];
+  editing = { id: m.id, photo_paths: paths, keepSet: new Set(paths) };
+
   btnSave.textContent = "Änderungen speichern";
   addPanel.hidden = false;
   inpTitle.value = m.title || "";
   inpText.value = m.text || "";
-  inpPhoto.value = ""; // Bei Änderung werden die alten Bilder ersetzt
+  inpPhoto.value = ""; // neue Bilder = hinzufügen
   inpTitle.focus();
+
+  renderEditPhotosGrid();
 }
 
 function closeAddPanel() {
@@ -108,6 +116,8 @@ function closeAddPanel() {
   editing = null;
   btnSave.textContent = "Speichern";
   inpPhoto.value = "";
+  editPhotos.hidden = true;
+  editPhotosGrid.innerHTML = "";
 }
 
 function render() {
@@ -217,20 +227,22 @@ btnSave.addEventListener("click", async () => {
 
   // EDIT: nur Titel/Text (Bilder unverändert)
   if (editing) {
-    await cloudUpdateWithPhotos(
-      pairCode,
-      editing.id,
-      { title: title || "Erinnerung", text },
-      files,
-      editing.photo_paths
-    );
-  
+  const keep = Array.from(editing.keepSet);
 
-    closeAddPanel();
-    randomBox.hidden = true;
-    await refreshFromCloud();
-    return;
-  }
+  await cloudUpdateWithPhotosMerge(
+    pairCode,
+    editing.id,
+    { title: title || "Erinnerung", text },
+    files,                 // neue Bilder (werden hinzugefügt)
+    editing.photo_paths,   // alte Bilder
+    keep                   // welche alten bleiben
+  );
+
+  closeAddPanel();
+  randomBox.hidden = true;
+  await refreshFromCloud();
+  return;
+}
 
   // NEU
   if (!title && !text && !hasFiles) return;
@@ -240,6 +252,49 @@ btnSave.addEventListener("click", async () => {
   randomBox.hidden = true;
   await refreshFromCloud();
 });
+
+function renderEditPhotosGrid() {
+  if (!editing) return;
+  const paths = Array.isArray(editing.photo_paths) ? editing.photo_paths : [];
+
+  editPhotosGrid.innerHTML = "";
+  if (paths.length === 0) {
+    editPhotos.hidden = true;
+    return;
+  }
+
+  editPhotos.hidden = false;
+
+  for (const p of paths) {
+    const url = photoPublicUrl(p);
+    if (!url) continue;
+
+    const div = document.createElement("div");
+    div.className = "editThumb";
+
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "Vorhandenes Foto";
+
+    const badge = document.createElement("div");
+    badge.className = "badge";
+
+    const isKept = editing.keepSet.has(p);
+    badge.textContent = isKept ? "✓" : "✖";
+    if (!isKept) div.classList.add("off");
+
+    div.appendChild(img);
+    div.appendChild(badge);
+
+    div.addEventListener("click", () => {
+      if (editing.keepSet.has(p)) editing.keepSet.delete(p);
+      else editing.keepSet.add(p);
+      renderEditPhotosGrid();
+    });
+
+    editPhotosGrid.appendChild(div);
+  }
+}
 
 // Pair buttons
 btnPairSave.addEventListener("click", async () => {

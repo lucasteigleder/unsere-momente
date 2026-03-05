@@ -128,3 +128,44 @@ async function cloudUpdateWithPhotos(pairCode, id, patch, files, oldPhotoPaths) 
 
   if (error) throw error;
 }
+
+async function cloudUpdateWithPhotosMerge(pairCode, id, patch, newFiles, oldPhotoPaths, keepPhotoPaths) {
+  const oldPaths = Array.isArray(oldPhotoPaths) ? oldPhotoPaths : [];
+  const keepPaths = Array.isArray(keepPhotoPaths) ? keepPhotoPaths : [];
+
+  // Welche alten sollen gelöscht werden?
+  const toDelete = oldPaths.filter(p => !keepPaths.includes(p));
+
+  // neue hochladen
+  const fileList = newFiles ? Array.from(newFiles) : [];
+  const uploaded = [];
+
+  for (const file of fileList) {
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const filename = `${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+    const path = `${pairCode}/${filename}`;
+
+    const { error: upErr } = await sb.storage.from("photos").upload(path, file, { upsert: false });
+    if (upErr) throw upErr;
+
+    uploaded.push(path);
+  }
+
+  // final: behalten + neue
+  const photo_paths = [...keepPaths, ...uploaded];
+
+  // DB update
+  const { error } = await sb
+    .from("memories")
+    .update({ ...patch, photo_paths })
+    .eq("id", id)
+    .eq("pair_code", pairCode);
+
+  if (error) throw error;
+
+  // Storage delete (erst nach erfolgreichem DB Update)
+  if (toDelete.length > 0) {
+    const { error: rmErr } = await sb.storage.from("photos").remove(toDelete);
+    if (rmErr) console.warn("REMOVE OLD PHOTOS ERROR:", rmErr);
+  }
+}

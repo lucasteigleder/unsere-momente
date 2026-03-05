@@ -150,3 +150,39 @@ input, textarea{
   width: 100%;
   display: block;
 }
+
+.editPhotosTitle{ font-size: 12px; opacity: .8; margin-top: 6px; }
+.editPhotosGrid{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.editThumb{
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.12);
+  aspect-ratio: 1 / 1;
+  cursor: pointer;
+}
+.editThumb img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display:block;
+}
+.editThumb .badge{
+  position:absolute;
+  right: 6px;
+  top: 6px;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.18);
+}
+.editThumb.off{
+  opacity: .45;
+  filter: grayscale(0.7);
+}
