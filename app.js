@@ -381,9 +381,65 @@ function render() {
 
 btnRandom.addEventListener("click", () => {
   if (memories.length === 0) return;
+
   const m = memories[Math.floor(Math.random() * memories.length)];
   randomBox.hidden = false;
-  randomBox.textContent = `${m.title}\n\n${m.text}`;
+  randomBox.innerHTML = "";
+
+  const title = document.createElement("div");
+  title.className = "title";
+  title.textContent = m.title || "Erinnerung";
+
+  const text = document.createElement("div");
+  text.className = "text";
+  text.textContent = m.text || "";
+
+  randomBox.appendChild(title);
+  randomBox.appendChild(text);
+
+  const paths = Array.isArray(m.photo_paths) ? m.photo_paths : [];
+  const urls = paths.map(p => photoPublicUrl(p)).filter(Boolean);
+
+  if (urls.length > 0) {
+    const gallery = document.createElement("div");
+    gallery.className = "gallery";
+
+    const track = document.createElement("div");
+    track.className = "galleryTrack";
+
+    const dots = document.createElement("div");
+    dots.className = "galleryDots";
+
+    urls.forEach((url, i) => {
+      const slide = document.createElement("div");
+      slide.className = "gallerySlide";
+
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Foto";
+
+      img.addEventListener("click", () => openLightbox(urls, i));
+
+      slide.appendChild(img);
+      track.appendChild(slide);
+    });
+
+    gallery.appendChild(track);
+    gallery.appendChild(dots);
+
+    makeDots(dots, urls.length, 0);
+
+    const onScroll = () => setActiveDot(dots, currentIndexFromScroll(track));
+    track.addEventListener("scroll", onScroll, { passive: true });
+
+    dots.addEventListener("click", (e) => {
+      const dotEls = Array.from(dots.querySelectorAll(".galleryDot"));
+      const dotIndex = dotEls.indexOf(e.target);
+      if (dotIndex >= 0) scrollToIndex(track, dotIndex);
+    });
+
+    randomBox.appendChild(gallery);
+  }
 });
 
 btnAdd.addEventListener("click", () => {
