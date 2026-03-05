@@ -15,40 +15,40 @@ async function cloudList(pairCode) {
   return data;
 }
 
-async function cloudAdd(pairCode, title, text, file) {
-  let photo_path = null;
+async function cloudAdd(pairCode, title, text, files) {
+  let photo_paths = null;
 
-  if (file) {
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const filename = `${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
-    photo_path = `${pairCode}/${filename}`;
+  const fileList = files ? Array.from(files) : [];
 
-    const { error: upErr } = await sb
-      .storage
-      .from("photos")
-      .upload(photo_path, file, { upsert: false });
+  if (fileList.length > 0) {
+    photo_paths = [];
 
-    if (upErr) {
-      console.error("UPLOAD ERROR:", upErr);
-      alert("Upload Fehler: " + upErr.message);
-      throw upErr;
+    for (const file of fileList) {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const filename = `${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+      const path = `${pairCode}/${filename}`;
+
+      const { error: upErr } = await sb
+        .storage
+        .from("photos")
+        .upload(path, file, { upsert: false });
+
+      if (upErr) throw upErr;
+
+      photo_paths.push(path);
     }
   }
 
   const { data, error } = await sb
     .from("memories")
-    .insert([{ pair_code: pairCode, title, text, photo_path }])
+    .insert([{ pair_code: pairCode, title, text, photo_paths }])
     .select("*")
     .single();
 
-  if (error) {
-    console.error("INSERT ERROR:", error);
-    alert("Insert Fehler: " + error.message);
-    throw error;
-  }
-
+  if (error) throw error;
   return data;
 }
+
 
 async function cloudDelete(pairCode, id, photo_path) {
   const { error } = await sb
@@ -59,8 +59,8 @@ async function cloudDelete(pairCode, id, photo_path) {
 
   if (error) throw error;
 
-  if (photo_path) {
-    await sb.storage.from("photos").remove([photo_path]);
+  if (photo_path && Array.isArray(photo_paths) && photo_paths.length > 0) {
+    await sb.storage.from("photos").remove(photo_paths);
   }
 }
 

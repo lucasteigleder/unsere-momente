@@ -121,3 +121,32 @@ input, textarea{
 .splashTitle{ font-size: 22px; font-weight: 900; }
 .splashSub{ opacity: .75; margin-top: 6px; }
 
+
+/*Swipe Gallery */
+.gallery {
+  margin-top: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+}
+
+.galleryTrack {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.galleryTrack::-webkit-scrollbar {
+  display: none;
+}
+
+.gallerySlide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+}
+
+.gallerySlide img {
+  width: 100%;
+  display: block;
+}

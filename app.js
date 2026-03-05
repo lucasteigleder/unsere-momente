@@ -30,7 +30,7 @@ let pairCode = (localStorage.getItem(PAIR_KEY) || "").trim();
 let memories = [];
 let channel = null;
 
-// Edit state: { id, photo_path } oder null
+// Edit state: { id } oder null
 let editing = null;
 
 function normalizePair(s) {
@@ -94,12 +94,12 @@ function openAddPanelForNew() {
 }
 
 function openAddPanelForEdit(m) {
-  editing = { id: m.id, photo_path: m.photo_path || null };
+  editing = { id: m.id };
   btnSave.textContent = "Änderungen speichern";
   addPanel.hidden = false;
   inpTitle.value = m.title || "";
   inpText.value = m.text || "";
-  inpPhoto.value = ""; // nur wenn du ein neues Foto wählst, wird ersetzt
+  inpPhoto.value = ""; // Bilder werden in dieser Version beim Edit nicht geändert
   inpTitle.focus();
 }
 
@@ -120,7 +120,11 @@ function render() {
     li.innerHTML = `
       <div class="title"></div>
       <div class="text"></div>
-      <img class="photo" hidden alt="Foto zur Erinnerung" />
+
+      <div class="gallery" hidden>
+        <div class="galleryTrack"></div>
+      </div>
+
       <div class="row actions">
         <button class="secondary" data-edit="${idx}">Bearbeiten</button>
         <button class="secondary" data-del="${idx}">Löschen</button>
@@ -130,11 +134,27 @@ function render() {
     li.querySelector(".title").textContent = m.title || "Ohne Titel";
     li.querySelector(".text").textContent = m.text || "";
 
-    const img = li.querySelector(".photo");
-    const url = photoPublicUrl(m.photo_path);
-    if (url) {
-      img.src = url;
-      img.hidden = false;
+    // Galerie füllen (Swipe)
+    const gallery = li.querySelector(".gallery");
+    const track = li.querySelector(".galleryTrack");
+
+    const paths = Array.isArray(m.photo_paths) ? m.photo_paths : [];
+    if (paths.length > 0) {
+      for (const p of paths) {
+        const url = photoPublicUrl(p);
+        if (!url) continue;
+
+        const slide = document.createElement("div");
+        slide.className = "gallerySlide";
+
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "Foto zur Erinnerung";
+
+        slide.appendChild(img);
+        track.appendChild(slide);
+      }
+      gallery.hidden = false;
     }
 
     list.appendChild(li);
@@ -147,7 +167,7 @@ function render() {
       const m = memories[i];
       if (!m) return;
 
-      await cloudDelete(pairCode, m.id, m.photo_path);
+      await cloudDelete(pairCode, m.id, m.photo_paths);
       await refreshFromCloud();
       randomBox.hidden = true;
     });
@@ -187,22 +207,20 @@ btnCancel.addEventListener("click", () => {
 btnSave.addEventListener("click", async () => {
   const title = inpTitle.value.trim();
   const text = inpText.value.trim();
-  const file = inpPhoto.files && inpPhoto.files[0];
+  const files = inpPhoto.files;
+  const hasFiles = files && files.length > 0;
 
   if (!pairCode) {
     showPairPanel(true);
     return;
   }
 
-  // EDIT: Titel/Text + optional neues Foto
+  // EDIT: nur Titel/Text (Bilder unverändert)
   if (editing) {
-    await cloudUpdateWithPhoto(
-      pairCode,
-      editing.id,
-      { title: title || "Erinnerung", text },
-      file || null,
-      editing.photo_path || null
-    );
+    await cloudUpdate(pairCode, editing.id, {
+      title: title || "Erinnerung",
+      text
+    });
 
     closeAddPanel();
     randomBox.hidden = true;
@@ -211,9 +229,9 @@ btnSave.addEventListener("click", async () => {
   }
 
   // NEU
-  if (!title && !text && !file) return;
+  if (!title && !text && !hasFiles) return;
 
-  await cloudAdd(pairCode, title || "Erinnerung", text, file);
+  await cloudAdd(pairCode, title || "Erinnerung", text, files);
   closeAddPanel();
   randomBox.hidden = true;
   await refreshFromCloud();
