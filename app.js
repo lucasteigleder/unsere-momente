@@ -208,6 +208,8 @@ btnSave.addEventListener("click", async () => {
   const title = inpTitle.value.trim();
   const text = inpText.value.trim();
   const files = inpPhoto.files;
+  alert("Files: " + (files ? files.length : "null"));
+  if (files && files[0]) alert("First: " + files [0].name);
   const hasFiles = files && files.length > 0;
 
   if (!pairCode) {
