@@ -3,15 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#111111" />
-
-  <!-- iOS PWA -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Momente" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
 
   <title>Unsere Momente</title>
+
+  <meta name="theme-color" content="#111111" />
+
+  <!-- iOS PWA meta -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Momente" />
+
+  <!-- Icons (müssen existieren!) -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+
+  <link rel="icon" href="icons/icon-512.png" />
 
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
@@ -19,7 +26,7 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- OneSignal SDK -->
+  <!-- OneSignal (Web SDK v16) -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -27,7 +34,7 @@
       await OneSignal.init({
         appId: "44a121f4-9431-40cd-acf3-30702c3ece16",
 
-        // WICHTIG: Pfade + Scope müssen zu GitHub Pages Project-Pfad passen
+        // GitHub Pages Subfolder:
         serviceWorkerPath: "/unsere-momente/OneSignalSDKWorker.js",
         serviceWorkerUpdaterPath: "/unsere-momente/OneSignalSDKUpdaterWorker.js",
         serviceWorkerParam: { scope: "/unsere-momente/" }
@@ -117,7 +124,7 @@
     </footer>
   </main>
 
-  <!-- Lightbox -->
+  <!-- Lightbox (Vollbild) -->
   <div id="lightbox" class="lightbox" hidden>
     <div class="lightboxBackdrop" aria-hidden="true"></div>
     <div class="lightboxContent" role="dialog" aria-modal="true">
@@ -127,15 +134,8 @@
     </div>
   </div>
 
-  <!-- App -->
+  <!-- Scripts -->
   <script src="cloud.js"></script>
   <script src="app.js"></script>
-
-  <!-- PWA Worker: NUR wenn du ihn wirklich nutzen willst -->
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/unsere-momente/sw.js", { scope: "/unsere-momente/" });
-    }
-  </script>
 </body>
 </html>
