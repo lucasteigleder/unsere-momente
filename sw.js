@@ -1,6 +1,6 @@
 importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
 
-const CACHE = "unsere-momente-v999";
+const CACHE = "unsere-momente-v1000";
 const ASSETS = [
   "./",
   "./index.html",
