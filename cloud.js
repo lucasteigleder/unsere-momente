@@ -12,14 +12,16 @@ async function cloudList(pairCode) {
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return data;
+  return data || [];
 }
 
+/**
+ * Multi Upload -> photo_paths (text[])
+ */
 async function cloudAdd(pairCode, title, text, files) {
   let photo_paths = null;
 
   const fileList = files ? Array.from(files) : [];
-
   if (fileList.length > 0) {
     photo_paths = [];
 
@@ -28,11 +30,7 @@ async function cloudAdd(pairCode, title, text, files) {
       const filename = `${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
       const path = `${pairCode}/${filename}`;
 
-      const { error: upErr } = await sb
-        .storage
-        .from("photos")
-        .upload(path, file, { upsert: false });
-
+      const { error: upErr } = await sb.storage.from("photos").upload(path, file, { upsert: false });
       if (upErr) throw upErr;
 
       photo_paths.push(path);
@@ -49,8 +47,10 @@ async function cloudAdd(pairCode, title, text, files) {
   return data;
 }
 
-
-async function cloudDelete(pairCode, id, photo_path) {
+/**
+ * Delete row + delete ALL photos in storage
+ */
+async function cloudDelete(pairCode, id, photo_paths) {
   const { error } = await sb
     .from("memories")
     .delete()
@@ -59,9 +59,20 @@ async function cloudDelete(pairCode, id, photo_path) {
 
   if (error) throw error;
 
-  if (photo_path && Array.isArray(photo_paths) && photo_paths.length > 0) {
-    await sb.storage.from("photos").remove(photo_paths);
+  if (Array.isArray(photo_paths) && photo_paths.length > 0) {
+    const { error: rmErr } = await sb.storage.from("photos").remove(photo_paths);
+    if (rmErr) console.warn("REMOVE PHOTO ERROR:", rmErr);
   }
+}
+
+async function cloudUpdate(pairCode, id, patch) {
+  const { error } = await sb
+    .from("memories")
+    .update(patch)
+    .eq("id", id)
+    .eq("pair_code", pairCode);
+
+  if (error) throw error;
 }
 
 function photoPublicUrl(path) {
@@ -79,45 +90,4 @@ function subscribePair(pairCode, onChange) {
       () => onChange()
     )
     .subscribe();
-}
-
-async function cloudUpdate(pairCode, id, patch) {
-    const { error } = await sb
-    .from("memories")
-    .update(patch)
-    .eq("id", id)
-    .eq("pair_code", pairCode)
-
-    if (error) throw error;
-}
-
-async function cloudUpdateWithPhoto(pairCode, id, patch, newFile, oldPhotoPath) {
-  let photo_path = oldPhotoPath || null;
-
-  // Wenn neues Foto gewählt wurde: hochladen + photo_path ersetzen
-  if (newFile) {
-    const ext = (newFile.name.split(".").pop() || "jpg").toLowerCase();
-    const filename = `${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
-    photo_path = `${pairCode}/${filename}`;
-
-    const { error: upErr } = await sb
-      .storage
-      .from("photos")
-      .upload(photo_path, newFile, { upsert: false });
-
-    if (upErr) throw upErr;
-
-    // altes Foto löschen (wenn vorhanden)
-    if (oldPhotoPath) {
-      await sb.storage.from("photos").remove([oldPhotoPath]);
-    }
-  }
-
-  const { error } = await sb
-    .from("memories")
-    .update({ ...patch, photo_path })
-    .eq("id", id)
-    .eq("pair_code", pairCode);
-
-  if (error) throw error;
 }
