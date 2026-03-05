@@ -71,6 +71,28 @@ function attachRealtime() {
 }
 
 /**
+ * ✅ Hilfsfunktion: setzt OneSignal Tag NUR wenn subscribed/opted-in
+ */
+async function setPairTagIfOptedIn(pairCodeToSet) {
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    try {
+      const optedIn = !!(OneSignal?.User?.PushSubscription?.optedIn);
+      if (!optedIn) return; // nicht subscribed → kein Tag setzen
+
+      await OneSignal.User.addTags({ pair_code: pairCodeToSet });
+
+      // Debug (optional)
+      // console.log("Tag gesetzt pair_code =", pairCodeToSet);
+      // console.log("optedIn:", OneSignal.User.PushSubscription.optedIn);
+      // console.log("subId:", OneSignal.User.PushSubscription.id);
+    } catch (e) {
+      console.error("setPairTagIfOptedIn failed:", e);
+    }
+  });
+}
+
+/**
  * Push aktivieren: Permission + Opt-In + Tag setzen
  */
 async function enablePush() {
@@ -83,15 +105,23 @@ async function enablePush() {
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try {
+      // 1) Permission
       await OneSignal.Notifications.requestPermission();
 
+      // 2) Opt-in
       if (OneSignal.User?.PushSubscription?.optIn) {
         await OneSignal.User.PushSubscription.optIn();
       } else if (OneSignal.Notifications?.setOptIn) {
         await OneSignal.Notifications.setOptIn(true);
       }
 
+      // 3) Jetzt Tag setzen (wichtig: erst NACH opt-in)
       await OneSignal.User.addTags({ pair_code: pairCode });
+
+      // optionales Debug:
+      // console.log("optedIn:", OneSignal.User.PushSubscription.optedIn);
+      // console.log("subId:", OneSignal.User.PushSubscription.id);
+
       alert("Push ist aktiv ✅");
     } catch (e) {
       console.error("Push enable error:", e);
@@ -221,10 +251,8 @@ lightboxClose.addEventListener("click", (e) => {
 });
 
 lightbox.addEventListener("click", (e) => {
-  if (
-    e.target === lightbox ||
-    e.target.classList.contains("lightboxBackdrop")
-  ) { closeLightbox();
+  if (e.target === lightbox || e.target.classList.contains("lightboxBackdrop")) {
+    closeLightbox();
   }
 });
 
@@ -304,11 +332,9 @@ function render() {
     li.querySelector(".title").textContent = m.title || "Ohne Titel";
     li.querySelector(".text").textContent = m.text || "";
 
-    // --- Gallery + Dots + Fullscreen ---
     const gallery = li.querySelector(".gallery");
     const track = li.querySelector(".galleryTrack");
 
-    // dots container
     const dots = document.createElement("div");
     dots.className = "galleryDots";
     gallery.appendChild(dots);
@@ -349,7 +375,6 @@ function render() {
       gallery.hidden = true;
     }
 
-    // IMPORTANT: append li!
     list.appendChild(li);
   });
 
@@ -465,7 +490,7 @@ btnSave.addEventListener("click", async () => {
     return;
   }
 
-  // EDIT: Titel/Text + Bilder: behalten/abwählen + neue hinzufügen
+  // EDIT
   if (editing) {
     const keep = Array.from(editing.keepSet);
 
@@ -504,6 +529,9 @@ btnPairSave.addEventListener("click", async () => {
   await refreshFromCloud();
   attachRealtime();
   pairPanel.hidden = true;
+
+  // ✅ wenn schon subscribed: Tag updaten
+  await setPairTagIfOptedIn(pairCode);
 });
 
 btnPush?.addEventListener("click", async () => {
@@ -535,9 +563,6 @@ btnPairClear.addEventListener("click", () => {
   await refreshFromCloud();
   attachRealtime();
 
-  // optional: tag setzen ohne prompt
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    try { await OneSignal.User.addTags({ pair_code: pairCode }); } catch {}
-  });
+  // ✅ optional: Tag setzen, aber nur wenn subscribed
+  await setPairTagIfOptedIn(pairCode);
 })();
